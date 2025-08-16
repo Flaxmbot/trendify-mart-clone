@@ -71,29 +71,32 @@ export default function CheckoutPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    // Mock cart data
-    const mockItems: CartItem[] = [
-      {
-        id: "1",
-        name: "Olive Green Tipping Polo",
-        price: 599,
-        image: "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/8eef21f3-4a52-4ae0-bfcf-d495c2edc784-trendifymartclothing-com/assets/images/9_1_9c506c3c-578f-44ce-bd09-c42f6524bacc-12.jpg",
-        quantity: 2,
-        size: "M",
-        color: "Green",
-      },
-      {
-        id: "2",
-        name: "Executive Pocket Polo",
-        price: 799,
-        image: "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/8eef21f3-4a52-4ae0-bfcf-d495c2edc784-trendifymartclothing-com/assets/images/8_1-20.jpg",
-        quantity: 1,
-        size: "L",
-        color: "Navy",
+    const fetchCartItems = async () => {
+        let sessionId = localStorage.getItem('sessionId');
+        if (!sessionId) {
+            router.push('/cart');
+            return;
+        }
+
+      try {
+        const response = await fetch(`/api/cart-items?sessionId=${sessionId}`);
+        const items = await response.json();
+
+        const detailedItems = await Promise.all(items.map(async (item) => {
+            const productResponse = await fetch(`/api/products?id=${item.productId}`);
+            const product = await productResponse.json();
+            return { ...item, name: product.name, price: product.price, image: product.imageUrl };
+        }));
+
+        setCartItems(detailedItems);
+
+      } catch (err) {
+        toast.error("Failed to load cart items.");
       }
-    ];
-    setCartItems(mockItems);
-  }, []);
+    };
+
+    fetchCartItems();
+  }, [router]);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -166,27 +169,35 @@ export default function CheckoutPage() {
     setIsLoading(true);
 
     try {
-      const orderData: OrderRequest = {
-        customerInfo,
-        shippingAddress,
-        items: cartItems,
-        subtotal,
-        shipping,
-        total,
-        paymentMethod,
-      };
+        const sessionId = localStorage.getItem('sessionId');
+        const orderData = {
+            customerName: `${customerInfo.firstName} ${customerInfo.lastName}`,
+            customerEmail: customerInfo.email,
+            customerPhone: customerInfo.phone,
+            shippingAddress: `${shippingAddress.address}, ${shippingAddress.city}, ${shippingAddress.state} ${shippingAddress.postalCode}, ${shippingAddress.country}`,
+            totalAmount: total,
+            items: cartItems,
+            paymentMethod,
+        };
 
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orderData),
+      });
 
-      // Clear cart
+      if (!response.ok) throw new Error('Failed to create order');
+
+      for (const item of cartItems) {
+          await fetch(`/api/cart-items?sessionId=${sessionId}&id=${item.id}`, { method: 'DELETE' });
+      }
+
+      localStorage.removeItem('sessionId');
       setCartItems([]);
       
-      // Show success message
       toast.success("Order placed successfully!");
-      
-      // Redirect to home
       router.push("/");
+
     } catch (error) {
       console.error("Order creation failed:", error);
       toast.error("Failed to place order. Please try again.");

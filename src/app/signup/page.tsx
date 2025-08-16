@@ -160,22 +160,22 @@ export default function SignUpPage() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Full Name */}
               <div className="space-y-2">
-                <label htmlFor="fullName" className="text-sm font-medium text-gray-700">
+                <label htmlFor="name" className="text-sm font-medium text-gray-700">
                   Full Name
                 </label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
                   <Input
-                    id="fullName"
+                    id="name"
                     type="text"
                     placeholder="Enter your full name"
-                    value={formData.fullName}
-                    onChange={(e) => handleInputChange("fullName", e.target.value)}
-                    className={`pl-10 ${errors.fullName ? "border-red-500" : ""}`}
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    className={`pl-10 ${errors.name ? "border-red-500" : ""}`}
                   />
                 </div>
-                {errors.fullName && (
-                  <p className="text-sm text-red-600">{errors.fullName}</p>
+                {errors.name && (
+                  <p className="text-sm text-red-600">{errors.name}</p>
                 )}
               </div>
 

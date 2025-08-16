@@ -48,48 +48,44 @@ export default function ShoppingCartPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch cart items on component mount
   useEffect(() => {
-    // Mock data for demonstration
-    const mockCartItems: CartItem[] = [
-      {
-        id: "1",
-        productId: "1",
-        name: "Olive Green Tipping Polo",
-        price: 599,
-        originalPrice: 799,
-        image: "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/8eef21f3-4a52-4ae0-bfcf-d495c2edc784-trendifymartclothing-com/assets/images/9_1_9c506c3c-578f-44ce-bd09-c42f6524bacc-12.jpg",
-        quantity: 2,
-        size: "M",
-        color: "Green",
-        inStock: true
-      },
-      {
-        id: "2",
-        productId: "2",
-        name: "Executive Pocket Polo",
-        price: 799,
-        image: "https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/test-clones/8eef21f3-4a52-4ae0-bfcf-d495c2edc784-trendifymartclothing-com/assets/images/8_1-20.jpg",
-        quantity: 1,
-        size: "L",
-        color: "Navy",
-        inStock: true
-      }
-    ];
+    const fetchCartItems = async () => {
+        let sessionId = localStorage.getItem('sessionId');
+        if (!sessionId) {
+            sessionId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            localStorage.setItem('sessionId', sessionId);
+        }
 
-    const mockSummary: CartSummary = {
-      subtotal: 1997,
-      shipping: 0,
-      tax: 199.7,
-      total: 2196.7,
-      itemCount: 3
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/cart-items?sessionId=${sessionId}`);
+        const items = await response.json();
+
+        const detailedItems = await Promise.all(items.map(async (item) => {
+            const productResponse = await fetch(`/api/products?id=${item.productId}`);
+            const product = await productResponse.json();
+            return { ...item, name: product.name, price: product.price, image: product.imageUrl, inStock: product.stockQuantity > 0 };
+        }));
+
+        setCartItems(detailedItems);
+
+        const subtotal = detailedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const shipping = subtotal > 1000 ? 0 : 99;
+        const tax = subtotal * 0.1;
+        const total = subtotal + shipping + tax;
+        const itemCount = detailedItems.reduce((sum, item) => sum + item.quantity, 0);
+
+        setCartSummary({ subtotal, shipping, tax, total, itemCount });
+
+      } catch (err) {
+        setError("Failed to load cart items.");
+        toast.error("Failed to load cart items.");
+      } finally {
+        setLoading(false);
+      }
     };
 
-    setTimeout(() => {
-      setCartItems(mockCartItems);
-      setCartSummary(mockSummary);
-      setLoading(false);
-    }, 1000);
+    fetchCartItems();
   }, []);
 
   const updateQuantity = async (itemId: string, newQuantity: number) => {
@@ -97,18 +93,18 @@ export default function ShoppingCartPage() {
 
     try {
       setUpdating(itemId);
+      const sessionId = localStorage.getItem('sessionId');
+      await fetch(`/api/cart-items?sessionId=${sessionId}&id=${itemId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ quantity: newQuantity }),
+      });
       
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      setCartItems(prev => prev.map(item => 
-        item.id === itemId ? { ...item, quantity: newQuantity } : item
-      ));
-
-      // Recalculate summary
       const updatedItems = cartItems.map(item => 
         item.id === itemId ? { ...item, quantity: newQuantity } : item
       );
+      setCartItems(updatedItems);
+
       const subtotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const shipping = subtotal > 1000 ? 0 : 99;
       const tax = subtotal * 0.1;
@@ -128,14 +124,12 @@ export default function ShoppingCartPage() {
   const removeItem = async (itemId: string) => {
     try {
       setUpdating(itemId);
-      
-      // Mock API call
-      await new Promise(resolve => setTimeout(resolve, 500));
+      const sessionId = localStorage.getItem('sessionId');
+      await fetch(`/api/cart-items?sessionId=${sessionId}&id=${itemId}`, { method: 'DELETE' });
       
       const updatedItems = cartItems.filter(item => item.id !== itemId);
       setCartItems(updatedItems);
 
-      // Recalculate summary
       const subtotal = updatedItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       const shipping = subtotal > 1000 ? 0 : 99;
       const tax = subtotal * 0.1;

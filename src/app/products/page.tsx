@@ -13,107 +13,27 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Mock product data - in real app, this would come from your database
-const mockProducts = [
-  {
-    id: 1,
-    name: "Premium Polo Shirt",
-    category: "polo-shirts",
-    price: 79.99,
-    originalPrice: 99.99,
-    image: "/api/placeholder/300/400",
-    rating: 4.8,
-    reviews: 124,
-    colors: ["black", "white", "navy"],
-    sizes: ["S", "M", "L", "XL"],
-    brand: "TrendifyMart",
-    isNew: false,
-    onSale: true,
-  },
-  {
-    id: 2,
-    name: "Classic Cotton T-Shirt",
-    category: "t-shirts",
-    price: 29.99,
-    originalPrice: null,
-    image: "/api/placeholder/300/400",
-    rating: 4.6,
-    reviews: 89,
-    colors: ["white", "black", "gray"],
-    sizes: ["XS", "S", "M", "L", "XL"],
-    brand: "ComfortWear",
-    isNew: true,
-    onSale: false,
-  },
-  {
-    id: 3,
-    name: "Vintage Denim Jacket",
-    category: "jackets",
-    price: 149.99,
-    originalPrice: 179.99,
-    image: "/api/placeholder/300/400",
-    rating: 4.9,
-    reviews: 67,
-    colors: ["blue", "black"],
-    sizes: ["S", "M", "L"],
-    brand: "VintageStyle",
-    isNew: false,
-    onSale: true,
-  },
-  {
-    id: 4,
-    name: "Performance Athletic Shirt",
-    category: "t-shirts",
-    price: 49.99,
-    originalPrice: null,
-    image: "/api/placeholder/300/400",
-    rating: 4.7,
-    reviews: 156,
-    colors: ["black", "navy", "red"],
-    sizes: ["S", "M", "L", "XL", "XXL"],
-    brand: "SportMax",
-    isNew: true,
-    onSale: false,
-  },
-  {
-    id: 5,
-    name: "Elegant Polo Collection",
-    category: "polo-shirts",
-    price: 89.99,
-    originalPrice: 119.99,
-    image: "/api/placeholder/300/400",
-    rating: 4.5,
-    reviews: 92,
-    colors: ["navy", "white", "burgundy"],
-    sizes: ["S", "M", "L", "XL"],
-    brand: "Elegant",
-    isNew: false,
-    onSale: true,
-  },
-  {
-    id: 6,
-    name: "Casual Hoodie",
-    category: "hoodies",
-    price: 69.99,
-    originalPrice: null,
-    image: "/api/placeholder/300/400",
-    rating: 4.4,
-    reviews: 78,
-    colors: ["gray", "black", "navy"],
-    sizes: ["S", "M", "L", "XL"],
-    brand: "CasualWear",
-    isNew: true,
-    onSale: false,
-  },
-];
+type Product = {
+  id: string;
+  name: string;
+  category: string;
+  price: number;
+  originalPrice: number | null;
+  imageUrl: string;
+  rating: number;
+  reviews: number;
+  colors: string[];
+  sizes: string[];
+  brand: string;
+  isNew: boolean;
+  onSale: boolean;
+};
 
-const categories = [
-  { id: "all", name: "All Products", count: 6 },
-  { id: "polo-shirts", name: "Polo Shirts", count: 2 },
-  { id: "t-shirts", name: "T-Shirts", count: 2 },
-  { id: "jackets", name: "Jackets", count: 1 },
-  { id: "hoodies", name: "Hoodies", count: 1 },
-];
+type Category = {
+  id: string;
+  name: string;
+  slug: string;
+};
 
 const sortOptions = [
   { value: "popularity", label: "Most Popular" },
@@ -146,15 +66,34 @@ export default function ProductsPage() {
 
   const productsPerPage = 6;
 
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
   useEffect(() => {
-    // Simulate loading
-    const timer = setTimeout(() => setIsLoading(false), 1000);
-    return () => clearTimeout(timer);
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [productsResponse, categoriesResponse] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories'),
+        ]);
+        const productsData = await productsResponse.json();
+        const categoriesData = await categoriesResponse.json();
+        setProducts(productsData);
+        setCategories([{ id: 'all', name: 'All Products', slug: 'all' }, ...categoriesData]);
+      } catch (error) {
+        console.error("Failed to fetch data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
 
   // Filter and sort products
   const filteredProducts = useMemo(() => {
-    let filtered = [...mockProducts];
+    let filtered = [...products];
 
     // Category filter
     if (selectedCategory !== "all") {
@@ -240,11 +179,11 @@ export default function ProductsPage() {
     setShowNew(false);
   };
 
-  const ProductCard = ({ product }: { product: typeof mockProducts[0] }) => (
+  const ProductCard = ({ product }: { product: Product }) => (
     <Card className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
       <div className="relative overflow-hidden">
         <img
-          src={product.image}
+          src={product.imageUrl}
           alt={product.name}
           className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
         />
@@ -508,18 +447,18 @@ export default function ProductsPage() {
             {categories.map(category => (
               <Button
                 key={category.id}
-                variant={selectedCategory === category.id ? "default" : "outline"}
+                variant={selectedCategory === category.slug ? "default" : "outline"}
                 className={`rounded-full ${
-                  selectedCategory === category.id 
+                  selectedCategory === category.slug
                     ? "bg-warm-orange hover:bg-warm-orange/90" 
                     : "hover:bg-warm-orange hover:text-white"
                 }`}
                 onClick={() => {
-                  setSelectedCategory(category.id);
+                  setSelectedCategory(category.slug);
                   setCurrentPage(1);
                 }}
               >
-                {category.name} ({category.count})
+                {category.name}
               </Button>
             ))}
           </div>

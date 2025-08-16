@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { Eye, EyeOff, Mail, Lock, Chrome, Facebook, ArrowLeft, Loader2 } from "lucide-react";
+import { auth } from "@/lib/firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -51,24 +53,26 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const idToken = await userCredential.user.getIdToken();
+
+      const response = await fetch("/api/auth/session-login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ idToken }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Store session token
-        localStorage.setItem("session_token", data.sessionToken);
-        
         toast.success("Login successful! Welcome back to TrendifyMart");
 
-        // Redirect based on user role
-        if (data.user?.role === "admin") {
+        const user = await userCredential.user.getIdTokenResult();
+        const role = user.claims.role;
+
+        if (role === "admin") {
           router.push("/admin");
         } else {
           router.push("/");
@@ -76,8 +80,12 @@ export default function LoginPage() {
       } else {
         toast.error(data.error || "Invalid email or password");
       }
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error: any) {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
+            toast.error("Invalid email or password");
+        } else {
+            toast.error("Something went wrong. Please try again.");
+        }
     } finally {
       setIsLoading(false);
     }
