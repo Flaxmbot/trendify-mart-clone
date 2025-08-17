@@ -1,3 +1,4 @@
+// src/components/header.tsx
 "use client";
 
 import { useState, useEffect } from 'react';
@@ -5,58 +6,55 @@ import Link from 'next/link';
 import { ShoppingCart, Search, Menu, X, User, LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { auth } from "@/lib/firebase"; // Import Firebase auth
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
+
+// Define a type for your user state
+interface AppUser {
+  uid: string;
+  name: string | null;
+  email: string | null;
+  role?: string; // Optional: you can add roles later
+}
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<AppUser | null>(null);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
-    checkAuthStatus();
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser: FirebaseUser | null) => {
+      if (firebaseUser) {
+        // User is signed in
+        setUser({
+          uid: firebaseUser.uid,
+          name: firebaseUser.displayName,
+          email: firebaseUser.email,
+          // In a real app, you might fetch role from Firestore here
+          // For now, we'll just assume a 'user' role
+          role: 'user',
+        });
+      } else {
+        // User is signed out
+        setUser(null);
+      }
+    });
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
   }, []);
 
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem('session_token');
-      if (!token) return;
-
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setUser(data.user);
-      } else {
-        localStorage.removeItem('session_token');
-      }
-    } catch (error) {
-      console.error('Auth check failed:', error);
-    }
-  };
 
   const handleLogout = async () => {
     try {
-      const token = localStorage.getItem('session_token');
-      if (token) {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      }
+      await signOut(auth);
       localStorage.removeItem('session_token');
-      setUser(null);
       toast.success('Logged out successfully');
       router.push('/');
     } catch (error) {
       console.error('Logout failed:', error);
-      localStorage.removeItem('session_token');
-      setUser(null);
+      toast.error("Logout failed. Please try again.");
     }
   };
 
@@ -98,8 +96,8 @@ export function Header() {
             </button>
 
             {/* Cart */}
-            <Link 
-              href="/cart" 
+            <Link
+              href="/cart"
               className="relative p-2 hover:bg-gray-800 rounded-lg transition-colors"
             >
               <ShoppingCart className="h-5 w-5" />
@@ -125,7 +123,7 @@ export function Header() {
                       <div className="font-medium">{user.name}</div>
                       <div className="text-gray-500">{user.email}</div>
                     </div>
-                    
+
                     {user.role === 'admin' && (
                       <Link
                         href="/admin"
@@ -136,7 +134,7 @@ export function Header() {
                         Admin Panel
                       </Link>
                     )}
-                    
+
                     <button
                       onClick={() => {
                         handleLogout();
@@ -181,42 +179,42 @@ export function Header() {
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-800">
             <nav className="flex flex-col space-y-2">
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="px-4 py-2 hover:bg-gray-800 rounded-lg transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Home
               </Link>
-              <Link 
-                href="/collections" 
+              <Link
+                href="/collections"
                 className="px-4 py-2 hover:bg-gray-800 rounded-lg transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Collections
               </Link>
-              <Link 
-                href="/products" 
+              <Link
+                href="/products"
                 className="px-4 py-2 hover:bg-gray-800 rounded-lg transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Products
               </Link>
-              <Link 
-                href="/about" 
+              <Link
+                href="/about"
                 className="px-4 py-2 hover:bg-gray-800 rounded-lg transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 About
               </Link>
-              <Link 
-                href="/contact" 
+              <Link
+                href="/contact"
                 className="px-4 py-2 hover:bg-gray-800 rounded-lg transition-colors"
                 onClick={() => setIsMenuOpen(false)}
               >
                 Contact
               </Link>
-              
+
               {user ? (
                 <div className="border-t border-gray-800 pt-2 mt-2">
                   <div className="px-4 py-2 text-sm text-gray-300">
@@ -276,3 +274,5 @@ export function Header() {
     </header>
   );
 }
+
+          
