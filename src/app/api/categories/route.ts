@@ -1,13 +1,12 @@
 // src/app/api/categories/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { collection, getDocs, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, limit, orderBy } from 'firebase-admin/firestore';
 
 function generateSlug(name: string): string {
   return name.toLowerCase().trim().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
 }
 
-const categoriesCollection = collection(adminDb, 'categories');
+const categoriesCollection = adminDb.collection('categories');
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,17 +14,16 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id');
 
     if (id) {
-      const docRef = doc(categoriesCollection, id);
-      const docSnap = await getDoc(docRef);
+      const docRef = categoriesCollection.doc(id);
+      const docSnap = await docRef.get();
 
-      if (!docSnap.exists()) {
+      if (!docSnap.exists) {
         return NextResponse.json({ error: 'Category not found' }, { status: 404 });
       }
       return NextResponse.json({ id: docSnap.id, ...docSnap.data() });
     }
 
-    const q = query(categoriesCollection, orderBy("createdAt", "desc"));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await categoriesCollection.orderBy("createdAt", "desc").get();
     const results = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     return NextResponse.json(results);
@@ -46,8 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     const slug = generateSlug(name);
-    const q = query(categoriesCollection, where("slug", "==", slug), limit(1));
-    const existing = await getDocs(q);
+    const existing = await categoriesCollection.where("slug", "==", slug).limit(1).get();
 
     if (!existing.empty) {
       return NextResponse.json({ error: "Category with this name already exists" }, { status: 400 });
@@ -60,7 +57,7 @@ export async function POST(request: NextRequest) {
       createdAt: new Date().toISOString()
     };
 
-    const docRef = await addDoc(categoriesCollection, newCategory);
+    const docRef = await categoriesCollection.add(newCategory);
     return NextResponse.json({ id: docRef.id, ...newCategory }, { status: 201 });
 
   } catch (error) {
@@ -78,10 +75,10 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        const docRef = doc(categoriesCollection, id);
-        const docSnap = await getDoc(docRef);
+        const docRef = categoriesCollection.doc(id);
+        const docSnap = await docRef.get();
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             return NextResponse.json({ error: 'Category not found' }, { status: 404 });
         }
 
@@ -96,8 +93,8 @@ export async function PUT(request: NextRequest) {
             updates.description = body.description;
         }
 
-        await updateDoc(docRef, updates);
-        const updatedDoc = await getDoc(docRef);
+        await docRef.update(updates);
+        const updatedDoc = await docRef.get();
 
         return NextResponse.json({ id: updatedDoc.id, ...updatedDoc.data() });
 
@@ -116,14 +113,14 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        const docRef = doc(categoriesCollection, id);
-        const docSnap = await getDoc(docRef);
+        const docRef = categoriesCollection.doc(id);
+        const docSnap = await docRef.get();
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             return NextResponse.json({ error: 'Category not found' }, { status: 404 });
         }
 
-        await deleteDoc(docRef);
+        await docRef.delete();
 
         return NextResponse.json({ message: 'Category deleted successfully' });
 
@@ -133,4 +130,4 @@ export async function DELETE(request: NextRequest) {
     }
 }
 
-          
+      
