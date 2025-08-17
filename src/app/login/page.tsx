@@ -1,3 +1,4 @@
+// src/app/login/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,6 +10,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase"; // Import Firebase auth
+import { signInWithEmailAndPassword } from "firebase/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -51,33 +54,20 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // You can get the token if you need it, but Firebase SDK manages the session automatically.
+      const token = await userCredential.user.getIdToken();
+      localStorage.setItem("session_token", token);
+      
+      toast.success("Login successful! Welcome back to TrendifyMart");
 
-      const data = await response.json();
+      // You can add role-based redirects here if needed
+      // For now, we'll just redirect to the homepage.
+      router.push("/");
 
-      if (response.ok) {
-        // Store session token
-        localStorage.setItem("session_token", data.sessionToken);
-        
-        toast.success("Login successful! Welcome back to TrendifyMart");
-
-        // Redirect based on user role
-        if (data.user?.role === "admin") {
-          router.push("/admin");
-        } else {
-          router.push("/");
-        }
-      } else {
-        toast.error(data.error || "Invalid email or password");
-      }
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+    } catch (error: any) {
+      toast.error(error.message || "Invalid email or password");
     } finally {
       setIsLoading(false);
     }
@@ -262,3 +252,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+    
