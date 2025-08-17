@@ -1,3 +1,4 @@
+// src/app/signup/page.tsx
 "use client";
 
 import { useState } from "react";
@@ -9,6 +10,9 @@ import { toast } from "sonner";
 import { Eye, EyeOff, User, Mail, Lock, Shield, Check, X, Chrome, Facebook } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { auth } from "@/lib/firebase"; // Import Firebase auth
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -100,28 +104,13 @@ export default function SignUpPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-        }),
-      });
+      const userCredential = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+      await updateProfile(userCredential.user, { displayName: formData.name });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        toast.success("Account created successfully! Please log in.");
-        router.push("/login");
-      } else {
-        toast.error(data.error || "Failed to create account");
-      }
-    } catch (error) {
-      toast.error("Something went wrong. Please try again.");
+      toast.success("Account created successfully! Please log in.");
+      router.push("/login");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create account");
     } finally {
       setIsLoading(false);
     }
@@ -169,13 +158,13 @@ export default function SignUpPage() {
                     id="fullName"
                     type="text"
                     placeholder="Enter your full name"
-                    value={formData.fullName}
-                    onChange={(e) => handleInputChange("fullName", e.target.value)}
-                    className={`pl-10 ${errors.fullName ? "border-red-500" : ""}`}
+                    value={formData.name}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    className={`pl-10 ${errors.name ? "border-red-500" : ""}`}
                   />
                 </div>
-                {errors.fullName && (
-                  <p className="text-sm text-red-600">{errors.fullName}</p>
+                {errors.name && (
+                  <p className="text-sm text-red-600">{errors.name}</p>
                 )}
               </div>
 
@@ -379,3 +368,5 @@ export default function SignUpPage() {
     </div>
   );
 }
+
+    
