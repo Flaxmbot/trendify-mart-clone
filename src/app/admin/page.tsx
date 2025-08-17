@@ -1,3 +1,4 @@
+// src/app/admin/page.tsx
 "use client";
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -5,14 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { 
-  Package, 
-  ShoppingBag, 
-  Users, 
-  DollarSign, 
-  Plus, 
-  Eye, 
-  Settings, 
+import {
+  Package,
+  ShoppingBag,
+  Users,
+  DollarSign,
+  Plus,
+  Eye,
+  Settings,
   UserCog,
   LogOut,
   Menu,
@@ -116,12 +117,12 @@ const AdminDashboard = () => {
       const ordersResponse = await fetch('/api/orders');
       let totalOrders = 0;
       let totalRevenue = 0;
-      let orders = [];
+      let orders: Order[] = [];
       if (ordersResponse.ok) {
         const ordersData = await ordersResponse.json();
         orders = ordersData.orders || [];
         totalOrders = orders.length;
-        totalRevenue = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+        totalRevenue = orders.reduce((sum: number, order: Order) => sum + (order.totalAmount || 0), 0);
       }
 
       // Set recent orders (latest 5)
@@ -146,7 +147,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem('session_token');
       if (token) {
-        await fetch('/api/auth/logout', { 
+        await fetch('/api/auth/logout', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -401,3 +402,5 @@ const AdminDashboard = () => {
 };
 
 export default AdminDashboard;
+
+        
