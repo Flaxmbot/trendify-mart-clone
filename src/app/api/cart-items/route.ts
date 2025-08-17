@@ -1,10 +1,9 @@
 // src/app/api/cart-items/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebaseAdmin';
-import { collection, getDocs, addDoc, doc, getDoc, updateDoc, deleteDoc, query, where, limit, orderBy } from 'firebase-admin/firestore';
 
-const cartItemsCollection = collection(adminDb, 'cartItems');
-const productsCollection = collection(adminDb, 'products');
+const cartItemsCollection = adminDb.collection('cartItems');
+const productsCollection = adminDb.collection('products');
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,18 +12,17 @@ export async function GET(request: NextRequest) {
     const sessionId = searchParams.get('sessionId');
 
     if (id) {
-      const docRef = doc(cartItemsCollection, id);
-      const docSnap = await getDoc(docRef);
+      const docRef = cartItemsCollection.doc(id);
+      const docSnap = await docRef.get();
 
-      if (!docSnap.exists()) {
+      if (!docSnap.exists) {
         return NextResponse.json({ error: 'Cart item not found' }, { status: 404 });
       }
       return NextResponse.json({ id: docSnap.id, ...docSnap.data() });
     }
 
     if (sessionId) {
-        const q = query(cartItemsCollection, where("sessionId", "==", sessionId), orderBy("createdAt", "desc"));
-        const querySnapshot = await getDocs(q);
+        const querySnapshot = await cartItemsCollection.where("sessionId", "==", sessionId).orderBy("createdAt", "desc").get();
         const results = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         return NextResponse.json(results);
     }
@@ -46,10 +44,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const productRef = doc(productsCollection, productId);
-    const productSnap = await getDoc(productRef);
+    const productRef = productsCollection.doc(productId);
+    const productSnap = await productRef.get();
 
-    if (!productSnap.exists()) {
+    if (!productSnap.exists) {
         return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
@@ -62,7 +60,7 @@ export async function POST(request: NextRequest) {
         createdAt: new Date().toISOString()
     };
 
-    const docRef = await addDoc(cartItemsCollection, newCartItem);
+    const docRef = await cartItemsCollection.add(newCartItem);
     return NextResponse.json({ id: docRef.id, ...newCartItem }, { status: 201 });
 
   } catch (error) {
@@ -80,10 +78,10 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        const docRef = doc(cartItemsCollection, id);
-        const docSnap = await getDoc(docRef);
+        const docRef = cartItemsCollection.doc(id);
+        const docSnap = await docRef.get();
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             return NextResponse.json({ error: 'Cart item not found' }, { status: 404 });
         }
 
@@ -94,8 +92,8 @@ export async function PUT(request: NextRequest) {
         if (body.size) updates.size = body.size;
         if (body.color) updates.color = body.color;
 
-        await updateDoc(docRef, updates);
-        const updatedDoc = await getDoc(docRef);
+        await docRef.update(updates);
+        const updatedDoc = await docRef.get();
 
         return NextResponse.json({ id: updatedDoc.id, ...updatedDoc.data() });
 
@@ -114,14 +112,14 @@ export async function DELETE(request: NextRequest) {
             return NextResponse.json({ error: "ID is required" }, { status: 400 });
         }
 
-        const docRef = doc(cartItemsCollection, id);
-        const docSnap = await getDoc(docRef);
+        const docRef = cartItemsCollection.doc(id);
+        const docSnap = await docRef.get();
 
-        if (!docSnap.exists()) {
+        if (!docSnap.exists) {
             return NextResponse.json({ error: 'Cart item not found' }, { status: 404 });
         }
 
-        await deleteDoc(docRef);
+        await docRef.delete();
 
         return NextResponse.json({ message: 'Cart item deleted successfully' });
 
@@ -131,4 +129,4 @@ export async function DELETE(request: NextRequest) {
     }
 }
 
-      
+                              
